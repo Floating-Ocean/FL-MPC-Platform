@@ -34,3 +34,5 @@ playwright-report/
 
 # 项目排除路径
 /src/main.d.ts
+/api/__pycache__/
+*.pyc
