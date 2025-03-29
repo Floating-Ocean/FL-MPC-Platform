@@ -1,0 +1,7 @@
+import os
+
+class Config:
+    SECRET_KEY = '1c1b7eafa52997ab696e44c50d9f24f5'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://flask_db:flask_db@localhost/flask_db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    UPLOAD_FOLDER = 'uploads'
