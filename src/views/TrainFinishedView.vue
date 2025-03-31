@@ -15,7 +15,7 @@ const accData = [
   57.16, 57.88, 58.19, 58.74, 59.29, 59.59, 60.09, 60.71, 60.62, 61.09, 61.44, 61.52, 62.26, 62.56,
   62.46, 62.95, 63.12, 63.49, 63.48, 64.03, 63.97, 64.32, 64.56, 64.66, 64.46, 64.97, 65.25, 65.32,
   65.17, 65.34, 65.44, 65.81, 65.95, 66.36, 66.16, 66.44,
-].map((v) => (v + 30) / 100) // 转换为小数
+].map((v) => v + 30) // 转换为小数
 const lossData = [
   0.1898, 0.1714, 0.1608, 0.1545, 0.1497, 0.146, 0.1423, 0.1392, 0.136, 0.1338, 0.1312, 0.1293,
   0.127, 0.1251, 0.1231, 0.1217, 0.1197, 0.1187, 0.1169, 0.1157, 0.1147, 0.1132, 0.1124, 0.1111,
@@ -49,14 +49,24 @@ const initChart = () => {
       top: '10%',
       containLabel: true,
     },
-    legend: {
-      right: '4%',
-      top: 20,
-      itemWidth: 10,
-      itemHeight: 10,
-      data: ['准确度', '损失'],
-      textStyle: { color: '#666' },
-    },
+    legend: [
+      {
+        right: '4%',
+        top: 20,
+        itemWidth: 10,
+        itemHeight: 10,
+        data: '准确度',
+        textStyle: { color: '#666' },
+      },
+      {
+        left: '4%',
+        top: 20,
+        itemWidth: 10,
+        itemHeight: 10,
+        data: '损失',
+        textStyle: { color: '#666' },
+      }
+    ],
     xAxis: {
       type: 'category',
       data: epochs,
@@ -66,13 +76,24 @@ const initChart = () => {
       splitLine: { show: false },
       boundaryGap: false,
     },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: '#999' },
-      axisLine: { lineStyle: { color: '#eee' } },
-      axisTick: { show: false },
-      splitLine: { show: false },
-    },
+    yAxis: [
+      {
+        type: 'value',
+        axisLabel: { color: '#999' },
+        axisLine: { lineStyle: { color: '#eee' } },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        scale: true,
+      },
+      {
+        type: 'value',
+        axisLabel: { color: '#999' },
+        axisLine: { lineStyle: { color: '#eee' } },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        scale: true,
+      }
+    ],
     series: [
       {
         name: '准确度',
@@ -80,20 +101,20 @@ const initChart = () => {
         smooth: true,
         symbol: 'none',
         itemStyle: {
-          color: '#4ECDC4',
+          color: 'rgb(129, 199, 132)',
           borderColor: '#fff',
           borderWidth: 2,
         },
         lineStyle: {
-          color: '#4ECDC4',
-          shadowColor: 'rgba(78,205,196,0.3)',
+          color: 'rgb(129, 199, 132)',
+          shadowColor: 'rgba(129, 199, 132, 0.3)',
           shadowBlur: 8,
           shadowOffsetY: 10,
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(78,205,196,0.6)' },
-            { offset: 1, color: 'rgba(78,205,196,0)' },
+            { offset: 0, color: 'rgba(129, 199, 132, 0.6)' },
+            { offset: 1, color: 'rgba(129, 199, 132, 0)' },
           ]),
         },
         data: accData,
@@ -104,22 +125,23 @@ const initChart = () => {
         smooth: true,
         symbol: 'none',
         itemStyle: {
-          color: '#FF6B6B',
+          color: 'rgb(255, 183, 77)',
           borderColor: '#fff',
           borderWidth: 2,
         },
         lineStyle: {
-          color: '#FF6B6B',
-          shadowColor: 'rgba(255,107,107,0.3)',
+          color: 'rgb(255, 183, 77)',
+          shadowColor: 'rgba(255, 183, 77, 0.3)',
           shadowBlur: 8,
           shadowOffsetY: 10,
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(255,107,107,0.6)' },
-            { offset: 1, color: 'rgba(255,107,107,0)' },
+            { offset: 0, color: 'rgba(255, 183, 77, 0.6)' },
+            { offset: 1, color: 'rgba(255, 183, 77, 0)' },
           ]),
         },
+        yAxisIndex: 1,
         data: lossData,
       },
     ],
