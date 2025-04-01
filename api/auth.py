@@ -1,7 +1,5 @@
-# auth.py
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask import Blueprint, request, jsonify, json
-import threading
 from models import Model, db, User, TrainingRecord
 from lib.session import open_session, check_classify_acc
 from multiprocessing import Manager, Process
@@ -18,6 +16,9 @@ login_manager = LoginManager()
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# 全局字典存储 training_status
+global_training_status = {}
 
 def register_user(data):
     # 注册用户的逻辑
@@ -89,7 +90,15 @@ def register_routes(app):
         output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
         os.makedirs(output_dir, exist_ok=True)
 
+        # 使用 Manager 创建共享字典
         training_status = Manager().dict()
+        training_status['completed'] = False
+        training_status['loss_list'] = []
+        training_status['acc_list'] = []
+
+        # 将 training_status 存储到全局字典中
+        global_training_status[str(task_id)] = training_status
+
         p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
         p.start()
 
@@ -110,17 +119,16 @@ def register_routes(app):
     @app.route('/get_training_progress', methods=['GET'])
     @login_required
     def get_training_progress():
-        user = current_user
-        if user and user.models:
-            model = user.models[0]
-            if model.training_records:
-                training_record = model.training_records[-1]
-                return jsonify({
-                    'completed': training_record.completed,
-                    'loss_list': json.loads(training_record.loss_list) if training_record.loss_list else [],
-                    'acc_list': json.loads(training_record.acc_list) if training_record.acc_list else []
-                }), 200
-        return jsonify({'message': 'No training in progress'}), 404
+        task_id = request.args.get('task_id')
+        if not task_id:
+            return jsonify({'message': 'Invalid task_id'}), 400
+
+        training_status = global_training_status.get(str(task_id), {})
+        return jsonify({
+            'completed': training_status.get('completed', False),
+            'loss_list': list(training_status.get('loss_list', [])),
+            'acc_list': list(training_status.get('acc_list', []))
+        }), 200
 
     @app.route('/upload_model', methods=['POST'])
     @login_required
