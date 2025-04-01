@@ -1,14 +1,23 @@
 # auth.py
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, json
 import threading
-from models import Model, db, User
-from lib.main import solve  # 导入solve函数
+from models import Model, db, User, TrainingRecord
+from lib.session import open_session, check_classify_acc
+from multiprocessing import Manager, Process
+import uuid
+import os
+from werkzeug.utils import secure_filename
 
 auth_bp = Blueprint('auth', __name__)
 
 # 初始化 LoginManager
 login_manager = LoginManager()
+
+# 定义 user_loader 回调函数
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 def register_user(data):
     # 注册用户的逻辑
@@ -31,6 +40,20 @@ def login_user_func(data):
         login_user(user)
         return user
     return None
+
+def allowed_file(filename):
+    # 验证文件合法性的逻辑
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
+
+def predict_image(file, model_id):
+    # 使用模型进行预测的逻辑
+    # 这里假设有一个函数 predict_image 实现了预测逻辑
+    pass
+
+def calculate_accuracy(dataset):
+    # 计算模型准确度的逻辑
+    # 这里假设有一个函数 calculate_accuracy 实现了准确度计算逻辑
+    pass
 
 def register_routes(app):
     @app.route('/register', methods=['POST'])
@@ -57,11 +80,32 @@ def register_routes(app):
     @login_required
     def start_training():
         data = request.json
-        dataset_type = data['dataset_type']
-        epochs = data['epochs']
-        # 启动训练任务
-        threading.Thread(target=solve).start()  # 调用main.py中的solve函数
-        return jsonify({'message': 'Training started'}), 200
+        dataset_type = data.get('dataset_type')
+        epochs = data.get('epochs')
+        if not dataset_type or not epochs:
+            return jsonify({'message': 'Invalid input'}), 400
+
+        task_id = uuid.uuid4()
+        output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
+        os.makedirs(output_dir, exist_ok=True)
+
+        training_status = Manager().dict()
+        p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
+        p.start()
+
+        # 保存进程信息以便后续查询
+        if current_user.models:
+            model = current_user.models[0]
+        else:
+            model = Model(name=f"model_{task_id}", user_id=current_user.id, file_directory=output_dir)
+            db.session.add(model)
+            db.session.commit()
+
+        training_record = TrainingRecord(model_id=model.id, completed=False)
+        db.session.add(training_record)
+        db.session.commit()
+
+        return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
 
     @app.route('/get_training_progress', methods=['GET'])
     @login_required
@@ -104,7 +148,23 @@ def register_routes(app):
     @app.route('/test_accuracy', methods=['POST'])
     @login_required
     def test_accuracy():
-        dataset = request.json['dataset']
-        # 计算模型准确度
-        accuracy = calculate_accuracy(dataset)
-        return jsonify({'accuracy': accuracy}), 200
+        data = request.json
+        model_id = data.get('model_id')
+        img_path = data.get('img_path')
+
+        if not model_id or not img_path:
+            return jsonify({'message': 'Invalid input'}), 400
+
+        model = Model.query.get(model_id)
+        if not model:
+            return jsonify({'message': 'Model not found'}), 404
+
+        acc_dict = Manager().dict()
+        p = Process(target=check_classify_acc, args=(model.file_directory, img_path, acc_dict))
+        p.start()
+        p.join()
+
+        if 'result' in acc_dict:
+            return jsonify({'result': acc_dict['result']}), 200
+        else:
+            return jsonify({'message': 'Prediction failed'}), 500

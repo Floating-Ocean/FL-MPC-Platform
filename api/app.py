@@ -5,7 +5,6 @@ from flask_login import LoginManager
 from config import Config
 from models import db
 from auth import login_manager, register_routes
-from lib.main import solve  # 导入solve函数
 
 def create_app():
     app = Flask(__name__)
@@ -18,12 +17,6 @@ def create_app():
         db.create_all()
 
     register_routes(app)
-
-    # 添加训练路由
-    @app.route('/train')
-    def train():
-        solve()
-        return "训练已启动"
 
     return app
 
