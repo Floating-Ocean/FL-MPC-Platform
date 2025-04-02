@@ -1,13 +1,15 @@
 # app.py
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_cors import CORS
+
+from auth import login_manager, register_routes
 from config import Config
 from models import db
-from auth import login_manager, register_routes
+
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, supports_credentials=True)
     app.config.from_object(Config)
 
     db.init_app(app)
