@@ -8,7 +8,7 @@ const router = useRouter()
 const onNext = async () => {
   await axios.get('/current_session')
       .then(() => {
-          router.push('/review')
+          router.push('/start')
       })
       .catch(() => {
           router.push('/login')

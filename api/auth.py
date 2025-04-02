@@ -1,7 +1,7 @@
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask import Blueprint, request, jsonify, session
 from models import Model, db, User, TrainingRecord
-from lib.session import open_session, check_classify_acc
+from lib.train.session import open_session, check_classify_acc
 from multiprocessing import Manager, Process
 import uuid
 import os

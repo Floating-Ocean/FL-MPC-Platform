@@ -4,10 +4,19 @@ A training platform for a simple secret multi-party computation implementation o
 
 ## Cloning
 
-Note that this repo includes a git submodule in /api/lib/. So please add `--recursive` when cloning, or run the code below:
+Note that this repo includes a git submodule in `/api/lib/`. So please add `--recursive` when cloning, or run the code below:
 
 ```sh
 git clone --recursive https://github.com/Floating-Ocean/FL-MPC-Platform.git
+```
+
+## Submodule Setup
+
+The submodule in `/api/lib/` need to be installed by pip locally, run the code below:
+
+```sh
+cd /path/to/repo/api/lib/
+pip install -e .
 ```
 
 ## Vue3 Project Setup
