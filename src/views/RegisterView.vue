@@ -8,7 +8,6 @@ interface RegisterForm {
   username: string;
   password: string;
   confirm_passwd: string;
-  email: string;
 }
 
 const validatePasswd = (rule: never, value: string, callback: (error?: Error) => void) => {
@@ -21,21 +20,18 @@ const validatePasswd = (rule: never, value: string, callback: (error?: Error) =>
   }
 }
 
-const registerForm = ref<RegisterForm>({username: '', password: '', confirm_passwd: '', email: ''})
+const registerForm = ref<RegisterForm>({username: '', password: '', confirm_passwd: ''})
 const registerRules = ref({
   username: [{required: true, message: '请输入用户名', trigger: 'blur'},],
   password: [{required: true, message: '请输入密码', trigger: 'blur'},],
   confirm_passwd: [{required: true, message: '请再次输入密码', trigger: 'blur'},
     { validator: validatePasswd, trigger: ['blur', 'change'] },],
-  email: [{required: true, message: '请输入邮箱', trigger: 'blur'},
-    {type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change']},],
 })
 const registerFormRef = ref()
 const router = useRouter()
 const submitForm = () => {
   if (registerFormRef.value) {
     registerFormRef.value.validate(async (valid: boolean) => {
-      console.log(111)
       if (valid) {
         await axios.post("/register", registerForm.value)
             .then(() => {
@@ -80,10 +76,6 @@ const submitForm = () => {
         <el-form-item class="register-from-item" label="确认密码" prop="confirm_passwd">
           <el-input v-model="registerForm.confirm_passwd" placeholder="请再次输入密码" size="large"
                     type="password"></el-input>
-        </el-form-item>
-        <el-form-item class="register-from-item" label="邮箱" prop="email">
-          <el-input v-model="registerForm.email" placeholder="请输入邮箱"
-                    size="large"></el-input>
         </el-form-item>
         <el-form-item class="register-actions">
           <el-button size="large" type="primary" @click="submitForm">注册</el-button>

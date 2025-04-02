@@ -18,8 +18,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # 使用 Manager 创建共享字典
-manager = Manager()
-global_training_status = manager.dict()
+global_training_status = {}
 
 def register_user(data):
     # 注册用户的逻辑
@@ -94,12 +93,11 @@ def register_routes(app):
         logout_user()
         return jsonify({'message': 'Logged out successfully'}), 200
 
-    @app.route('/check_login', methods=['GET'])
-    def check_login():
-        if current_user.is_authenticated:
-            return jsonify({'message': 'User is logged in', 'user_id': current_user.id}), 200
-        else:
-            return jsonify({'message': 'User is not logged in'}), 401
+    @app.route('/current_session', methods=['GET'])
+    def current_session():
+        if not current_user.is_authenticated:
+            return jsonify({'msg': "Unauthorized!"}), 403
+        return jsonify({'message': 'User is logged in', 'user_id': current_user.id, 'username': current_user.username}), 200
 
     @app.route('/start_training', methods=['POST'])
     @login_required
@@ -115,7 +113,7 @@ def register_routes(app):
         os.makedirs(output_dir, exist_ok=True)
 
         # 使用 Manager 创建共享字典
-        training_status = manager.dict()
+        training_status = Manager().dict()
         global_training_status[str(task_id)] = training_status
 
         p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))

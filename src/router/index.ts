@@ -39,7 +39,7 @@ const router = createRouter({
       name: 'start',
       component: () => import('../views/StartView.vue'),
       meta:{
-        requiresAuth: false,
+        requiresAuth: true,
         title: '开始'
       },
     },
@@ -48,7 +48,7 @@ const router = createRouter({
       name: 'param',
       component: () => import('../views/ParamView.vue'),
       meta:{
-        requiresAuth: false,
+        requiresAuth: true,
         title: '配置'
       },
     },
@@ -57,7 +57,7 @@ const router = createRouter({
       name: 'train',
       component: () => import('../views/TrainView.vue'),
       meta:{
-        requiresAuth: false,
+        requiresAuth: true,
         title: '训练'
       },
     },
@@ -66,7 +66,7 @@ const router = createRouter({
       name: 'train_finish',
       component: () => import('../views/TrainFinishedView.vue'),
       meta:{
-        requiresAuth: false,
+        requiresAuth: true,
         title: '训练完成'
       },
     },
@@ -75,7 +75,7 @@ const router = createRouter({
       name: 'test',
       component: () => import('../views/TestView.vue'),
       meta:{
-        requiresAuth: false,
+        requiresAuth: true,
         title: '测试'
       },
     }
@@ -86,14 +86,8 @@ router.beforeEach(async (to, from, next) => {
   await axios.get('/current_session')
       .then(response => {
         isLoggedIn.value = true
-        isAdmin.value = response.data['isAdmin']
         userName.value = response.data['username']
-        if(response.data['isAdmin'] !== true && to.matched.some(record => record.meta.requiresAdminAuth)) {
-          alert("权限不足，请使用管理员账号登录")
-          next('/login')
-        }else {
-          next()
-        }
+        next()
       })
       .catch(() => {
         isLoggedIn.value = false
