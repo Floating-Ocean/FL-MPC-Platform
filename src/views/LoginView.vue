@@ -92,7 +92,7 @@ const goRegister = () => {
   align-items: flex-start;
 }
 
-.login-from-item {
+.login-from-item .el-input {
   width: 40vw;
 }
 

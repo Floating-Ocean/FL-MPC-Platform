@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import axios from "axios";
 import {ref} from "vue";
+import { ElNotification } from 'element-plus'
 
 export const isLoggedIn = ref<boolean>(false);
 export const isAdmin = ref<boolean>(false);
@@ -94,8 +95,11 @@ router.beforeEach(async (to, from, next) => {
         isAdmin.value = false
         userName.value = '未登录'
         if(to.matched.some(record => record.meta.requiresAuth)) {
-          alert("请先登录")
           next('/login')
+          ElNotification({
+            title: '请先登录',
+            type: "error",
+          })
         }else{
           next()
         }

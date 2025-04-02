@@ -70,7 +70,7 @@ def register_routes(app):
         session.modified = True  # 强制会话更新
         return jsonify({'message': 'Logged in successfully', 'user_id': user.id}), 200
 
-    @app.route('/logout')
+    @app.route('/logout', methods=['POST'])
     @login_required
     def logout():
         logout_user()
