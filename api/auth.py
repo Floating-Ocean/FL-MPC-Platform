@@ -1,5 +1,5 @@
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from flask import Blueprint, request, jsonify, json
+from flask import Blueprint, request, jsonify, session
 from models import Model, db, User, TrainingRecord
 from lib.session import open_session, check_classify_acc
 from multiprocessing import Manager, Process
@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 
 auth_bp = Blueprint('auth', __name__)
 
+
 # 初始化 LoginManager
 login_manager = LoginManager()
 
@@ -17,50 +18,29 @@ login_manager = LoginManager()
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
 # 使用 Manager 创建共享字典
 global_training_status = {}
 
-def register_user(data):
-    # 注册用户的逻辑
-    username = data.get('username')
-    password = data.get('password')
-    if not username or not password:
-        return None
-    user = User(username=username)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
-    return user
-
-def login_user_func(data):
-    # 登录用户的逻辑
-    username = data.get('username')
-    password = data.get('password')
-    user = User.query.filter_by(username=username).first()
-    if user and user.check_password(password):
-        login_user(user)
-        return user
-    return None
 
 def allowed_file(filename):
     # 验证文件合法性的逻辑
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
 
-def predict_image(file, model_id):
-    # 使用模型进行预测的逻辑
-    # 这里假设有一个函数 predict_image 实现了预测逻辑
-    pass
-
-def calculate_accuracy(dataset):
-    # 计算模型准确度的逻辑
-    # 这里假设有一个函数 calculate_accuracy 实现了准确度计算逻辑
-    pass
-
 def register_routes(app):
     @app.route('/register', methods=['POST'])
     def register():
         data = request.json
-        user = register_user(data)
+        # 注册用户的逻辑
+        username = data.get('username')
+        password = data.get('password')
+        if not username or not password:
+            return None
+        user = User()
+        user.username = username
+        user.password = password
+        db.session.add(user)
+        db.session.commit()
         return jsonify({'message': 'User registered successfully'}), 201
 
     @app.route('/login', methods=['POST'])
@@ -80,11 +60,14 @@ def register_routes(app):
             return jsonify({'message': 'Invalid credentials', 'error': 'User not found'}), 401
 
         # 验证密码
-        if not user.check_password(password):
+        if user.password != password:
             return jsonify({'message': 'Invalid credentials', 'error': 'Incorrect password'}), 401
 
         # 登录用户
-        login_user(user)
+        if not login_user(user):
+            return jsonify({'message': 'Login Failed', 'error': 'Login Failed'}), 500
+
+        session.modified = True  # 强制会话更新
         return jsonify({'message': 'Logged in successfully', 'user_id': user.id}), 200
 
     @app.route('/logout')
@@ -160,15 +143,6 @@ def register_routes(app):
             db.session.commit()
             return jsonify({'message': 'Model uploaded successfully'}), 200
         return jsonify({'message': 'Invalid file'}), 400
-
-    @app.route('/predict', methods=['POST'])
-    @login_required
-    def predict():
-        file = request.files['image']
-        model_id = request.form['model_id']
-        # 使用模型进行预测
-        result = predict_image(file, model_id)
-        return jsonify({'result': result}), 200
 
     @app.route('/test_accuracy', methods=['POST'])
     @login_required

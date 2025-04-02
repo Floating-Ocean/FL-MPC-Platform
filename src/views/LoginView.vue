@@ -26,7 +26,7 @@ const submitForm = () => {
                 title: '登陆成功',
                 type: "success",
               })
-              router.push('/review')
+              router.push('/start')
             })
             .catch(error => {
               console.error(error)
@@ -92,7 +92,7 @@ const goRegister = () => {
   align-items: flex-start;
 }
 
-.login-from-item .el-input {
+.login-from-item {
   width: 40vw;
 }
 
