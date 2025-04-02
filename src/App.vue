@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import {RouterView, useRouter} from 'vue-router'
 import {ElNotification, ElPageHeader} from 'element-plus'
-import {User, Setting} from '@element-plus/icons-vue'
+import {User} from '@element-plus/icons-vue'
 import axios from "axios";
-import {isLoggedIn, isAdmin, userName} from "@/router";
+import {isLoggedIn, userName} from "@/router";
 
 const router = useRouter()
 
@@ -30,17 +30,6 @@ const toHome = () => {
   router.push('/')
 }
 
-const toAdmin = () => {
-  if(isAdmin.value) {
-    router.push('/admin')
-  }else{
-    ElNotification({
-      title: '出现错误，请使用管理员账号登录',
-      type: "error",
-    })
-  }
-}
-
 </script>
 
 <template>
@@ -53,10 +42,6 @@ const toAdmin = () => {
         </span>
       </template>
       <template #extra>
-        <el-button v-if="isAdmin" class="app-user" text @click="toAdmin">
-          <el-icon class="app-user-icon"><Setting/></el-icon>
-          <span class="app-user-name">管理后台</span>
-        </el-button>
         <el-popconfirm title="退出登录?" @confirm="logout">
         <template #reference>
           <el-button v-if="isLoggedIn" class="app-user" text>
@@ -88,12 +73,4 @@ const toAdmin = () => {
   margin-right: 24px;
 }
 
-</style>
-
-<style>
-.app-user {
-  .el-button.is-text{
-    color: var(--el-text-color-primary);
-  }
-}
 </style>

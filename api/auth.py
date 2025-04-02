@@ -1,7 +1,7 @@
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask import Blueprint, request, jsonify, session
 from models import Model, db, User, TrainingRecord
-from lib.train.session import open_session, check_classify_acc
+from lib.train.session import open_session, check_classify_acc, get_available_models
 from multiprocessing import Manager, Process
 import uuid
 import os
@@ -129,6 +129,12 @@ def register_routes(app):
             'loss_list': training_status.get('loss_list', []),
             'acc_list': training_status.get('acc_list', [])
         }), 200
+
+    @app.route('/get_models', methods=['GET'])
+    @login_required
+    def get_models():
+        models = get_available_models()
+        return jsonify({'message': 'Models available', 'models': models}), 200
 
     @app.route('/upload_model', methods=['POST'])
     @login_required
