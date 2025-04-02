@@ -31,7 +31,6 @@ const initChart = () => {
   chart = echarts.init(chartEl.value)
 
   const option = {
-    backgroundColor: '#fff',
     tooltip: { trigger: 'axis' },
     dataZoom: [
       {
