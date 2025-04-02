@@ -17,8 +17,9 @@ login_manager = LoginManager()
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# 全局字典存储 training_status
-global_training_status = {}
+# 使用 Manager 创建共享字典
+manager = Manager()
+global_training_status = manager.dict()
 
 def register_user(data):
     # 注册用户的逻辑
@@ -66,16 +67,39 @@ def register_routes(app):
     @app.route('/login', methods=['POST'])
     def login():
         data = request.json
-        user = login_user_func(data)
-        if user:
-            return jsonify({'message': 'Logged in successfully'}), 200
-        return jsonify({'message': 'Invalid credentials'}), 401
+
+        # 输入验证
+        if not data or 'username' not in data or 'password' not in data:
+            return jsonify({'message': 'Invalid input', 'error': 'Username and password are required'}), 400
+
+        username = data.get('username')
+        password = data.get('password')
+
+        # 查找用户
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return jsonify({'message': 'Invalid credentials', 'error': 'User not found'}), 401
+
+        # 验证密码
+        if not user.check_password(password):
+            return jsonify({'message': 'Invalid credentials', 'error': 'Incorrect password'}), 401
+
+        # 登录用户
+        login_user(user)
+        return jsonify({'message': 'Logged in successfully', 'user_id': user.id}), 200
 
     @app.route('/logout')
     @login_required
     def logout():
         logout_user()
         return jsonify({'message': 'Logged out successfully'}), 200
+
+    @app.route('/check_login', methods=['GET'])
+    def check_login():
+        if current_user.is_authenticated:
+            return jsonify({'message': 'User is logged in', 'user_id': current_user.id}), 200
+        else:
+            return jsonify({'message': 'User is not logged in'}), 401
 
     @app.route('/start_training', methods=['POST'])
     @login_required
@@ -91,12 +115,7 @@ def register_routes(app):
         os.makedirs(output_dir, exist_ok=True)
 
         # 使用 Manager 创建共享字典
-        training_status = Manager().dict()
-        training_status['completed'] = False
-        training_status['loss_list'] = []
-        training_status['acc_list'] = []
-
-        # 将 training_status 存储到全局字典中
+        training_status = manager.dict()
         global_training_status[str(task_id)] = training_status
 
         p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
@@ -126,8 +145,8 @@ def register_routes(app):
         training_status = global_training_status.get(str(task_id), {})
         return jsonify({
             'completed': training_status.get('completed', False),
-            'loss_list': list(training_status.get('loss_list', [])),
-            'acc_list': list(training_status.get('acc_list', []))
+            'loss_list': training_status.get('loss_list', []),
+            'acc_list': training_status.get('acc_list', [])
         }), 200
 
     @app.route('/upload_model', methods=['POST'])
