@@ -82,39 +82,39 @@ def register_routes(app):
             return jsonify({'msg': "Unauthorized!"}), 403
         return jsonify({'message': 'User is logged in', 'user_id': current_user.id, 'username': current_user.username}), 200
 
-@auth_bp.route('/start_training', methods=['POST'])
-@login_required
-def start_training():
-    data = request.json
-    dataset_type = data.get('dataset_type')
-    epochs = data.get('epochs')
-    if not dataset_type or not epochs:
-        return jsonify({'message': 'Invalid input'}), 400
+    @auth_bp.route('/start_training', methods=['POST'])
+    @login_required
+    def start_training():
+        data = request.json
+        dataset_type = data.get('dataset_type')
+        epochs = data.get('epochs')
+        if not dataset_type or not epochs:
+            return jsonify({'message': 'Invalid input'}), 400
 
-    task_id = uuid.uuid4()
-    output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
-    os.makedirs(output_dir, exist_ok=True)
+        task_id = uuid.uuid4()
+        output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
+        os.makedirs(output_dir, exist_ok=True)
 
-    # 使用 Manager 创建共享字典
-    training_status = Manager().dict()
-    global_training_status[str(task_id)] = training_status
+        # 使用 Manager 创建共享字典
+        training_status = Manager().dict()
+        global_training_status[str(task_id)] = training_status
 
-    p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
-    p.start()
+        p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
+        p.start()
 
-    # 保存进程信息以便后续查询
-    if current_user.models:
-        model = current_user.models[0]
-    else:
-        model = Model(name=f"model_{task_id}", user_id=current_user.id, file_directory=output_dir)
-        db.session.add(model)
+        # 保存进程信息以便后续查询
+        if current_user.models:
+            model = current_user.models[0]
+        else:
+            model = Model(name=f"model_{task_id}", user_id=current_user.id, file_directory=output_dir)
+            db.session.add(model)
+            db.session.commit()
+
+        training_record = TrainingRecord(model_id=model.id, completed=False)
+        db.session.add(training_record)
         db.session.commit()
 
-    training_record = TrainingRecord(model_id=model.id, completed=False)
-    db.session.add(training_record)
-    db.session.commit()
-
-    return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
+        return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
     @auth_bp.route('/get_training_progress', methods=['GET'])
     @login_required
     def get_training_progress():
