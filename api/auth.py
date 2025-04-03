@@ -3,7 +3,7 @@ import os
 import uuid
 from multiprocessing import Manager, Process
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, send_file, make_response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 
@@ -165,17 +165,35 @@ def register_routes(app):
         if not record:
             return jsonify({'message': 'No record yet'}), 404
 
-        return jsonify({'message': 'Record found',
-                        'loss_list': json.loads(record.loss_list),
-                        'acc_list': json.loads(record.acc_list),
-                        'test_acc': record.test_acc,
-                        'train_acc': record.train_acc}), 200
+        return jsonify({'message': 'Record found', 'model_id': record.model_id,
+                        'loss_list': json.loads(record.loss_list), 'acc_list': json.loads(record.acc_list),
+                        'test_acc': record.test_acc, 'train_acc': record.train_acc}), 200
 
     @app.route('/get_models', methods=['GET'])
     @login_required
     def get_models():
         models = get_available_models()
         return jsonify({'message': 'Models available', 'models': models}), 200
+
+    @app.route('/download_model/<string:model_id>', methods=['GET'])
+    @login_required
+    def download_model(model_id: str):
+        model = Model.query.filter(Model.id == model_id).one()
+        if not model:
+            return jsonify({'message': 'No such model'}), 400
+
+        model_path = os.path.join(model.file_directory, f"{model.file_directory.split(os.path.sep)[-1]}.pth")
+        if not os.path.isfile(model_path):
+            return jsonify({'message': 'No such model file'}), 404
+
+        response = make_response(send_file(
+            path_or_file=model_path,
+            as_attachment=True,
+            download_name=f"{model.name}.pth"
+        ))
+        response.headers.extend({"Access-Control-Expose-Headers": "Content-Disposition"})
+
+        return response
 
     @app.route('/upload_model', methods=['POST'])
     @login_required
