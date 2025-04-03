@@ -3,7 +3,9 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { ElContainer, ElNotification } from 'element-plus'
 import TrainingEChart from '@/components/TrainingEChart.vue'
 import axios from 'axios'
-import router from '@/router'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const subProgressColor = ref('#e6a23c')
 const trainingStatus = ref('正在获取训练进度')
