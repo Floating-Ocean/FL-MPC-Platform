@@ -14,11 +14,13 @@ class Model(db.Model):
     name = db.Column(db.String(150), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     file_directory = db.Column(db.String(255), nullable=False)
+    is_user_uploaded = db.Column(db.Boolean, default=False)
     training_records = db.relationship('TrainingRecord', backref='model', lazy=True)
 
 class TrainingRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     model_id = db.Column(db.Integer, db.ForeignKey('model.id'), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
-    loss_list = db.Column(db.Text, nullable=True)
-    acc_list = db.Column(db.Text, nullable=True)
+    loss_list = db.Column(db.JSON, nullable=False)
+    acc_list = db.Column(db.JSON, nullable=False)
+    train_acc = db.Column(db.Float, nullable=False)
+    test_acc = db.Column(db.Float, nullable=False)
