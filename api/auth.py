@@ -151,6 +151,8 @@ def register_routes(app):
         db.session.add(record)
         db.session.commit()
 
+        user_tasks[current_user.id] = None  # 标记当前用户训练进程确认已结束
+
         return jsonify({'message': 'Record saved'}), 200
 
     @app.route('/get_last_record', methods=['GET'])
@@ -174,6 +176,18 @@ def register_routes(app):
     def get_datasets():
         datasets = get_available_datasets()
         return jsonify({'message': 'Datasets available', 'datasets': datasets}), 200
+
+    @app.route('/get_models', methods=['GET'])
+    @login_required
+    def get_models():
+        models = (Model.query
+                  .filter(Model.user_id == current_user.id)
+                  .order_by(Model.id.desc()).all())
+        if not models:
+            return jsonify({'message': 'No models yet'}), 400
+
+        response_models = [{'id': model.id, 'name': model.name} for model in models]
+        return jsonify({'message': 'Models available', 'models': response_models}), 200
 
     @app.route('/download_model/<string:model_id>', methods=['GET'])
     @login_required
@@ -212,23 +226,38 @@ def register_routes(app):
     @app.route('/test_accuracy', methods=['POST'])
     @login_required
     def test_accuracy():
-        data = request.json
-        model_id = data.get('model_id')
-        img_path = data.get('img_path')
+        if 'file' not in request.files:
+            return jsonify({'message': 'No file uploaded'}), 400
 
-        if not model_id or not img_path:
-            return jsonify({'message': 'Invalid input'}), 400
+        uploaded_file = request.files['file']
+        model_id = request.form.get('model_id')
+
+        if not model_id or uploaded_file.filename == '':
+            return jsonify({'message': 'Invalid payload'}), 400
+
+        if uploaded_file.mimetype not in ['image/jpeg', 'image/png']:
+            return jsonify({'message': 'Invalid file mimetype'}), 400
+
+        # 临时存储目录
+        temp_dir = app.config['TEMP_FOLDER']
+        os.makedirs(temp_dir, exist_ok=True)
+
+        filename = secure_filename(uploaded_file.filename)
+        temp_filename = str(uuid.uuid4()) + '_' + filename
+        temp_path = os.path.join(temp_dir, temp_filename)
+        uploaded_file.save(temp_path)
 
         model = Model.query.get(model_id)
         if not model:
             return jsonify({'message': 'Model not found'}), 404
 
+        model_path = os.path.join(model.file_directory, f"{model.file_directory.split(os.path.sep)[-1]}.pth")
         acc_dict = Manager().dict()
-        p = Process(target=check_classify_acc, args=(model.file_directory, img_path, acc_dict))
+        p = Process(target=check_classify_acc, args=(model_path, temp_path, acc_dict))
         p.start()
         p.join()
 
         if 'result' in acc_dict:
-            return jsonify({'result': acc_dict['result']}), 200
+            return jsonify({'message': 'Prediction ok', 'result': acc_dict['result']}), 200
         else:
             return jsonify({'message': 'Prediction failed'}), 500

@@ -5,6 +5,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://flask_db:flask_db@localhost/flask_db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = 'uploads'
+    TEMP_FOLDER = 'temp'
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'None'
