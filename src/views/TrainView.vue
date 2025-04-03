@@ -32,10 +32,10 @@ const startPooling = async () => {
             const currentEpochPercentage = currentData['epoch_progress']
             if (currentRoundPercentage != roundPercentage.value) roundPercentage.value = currentRoundPercentage
             if (currentEpochPercentage != epochPercentage.value) epochPercentage.value = currentEpochPercentage
-            if(chartRef.value.accData.length < currentData['acc_trains'].length) {
+            if (chartRef.value.accData.length < currentData['acc_trains'].length) {
               chartRef.value.accData.push(currentData['acc_trains'][currentData['acc_trains'].length - 1])
             }
-            if(chartRef.value.lossData.length < currentData['loss_trains'].length) {
+            if (chartRef.value.lossData.length < currentData['loss_trains'].length) {
               chartRef.value.lossData.push(currentData['loss_trains'][currentData['loss_trains'].length - 1])
             }
             break
