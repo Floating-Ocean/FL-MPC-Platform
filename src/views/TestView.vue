@@ -4,11 +4,11 @@ import * as echarts from 'echarts'
 import {
   ElButton,
   ElContainer,
-  ElMessage,
+  ElNotification,
   type UploadInstance,
   type UploadProps,
   type UploadRawFile,
-  type UploadRequestOptions,
+  type UploadRequestOptions
 } from 'element-plus'
 
 const models = ref([
@@ -58,11 +58,17 @@ function updateChart() {
 
 async function startTest() {
   if (!selectedModel.value) {
-    ElMessage.error('请先选择一个模型')
+    ElNotification({
+      title: '请先选择一个模型',
+      type: "error",
+    })
     return
   }
   if (!file.value) {
-    ElMessage.error('请导入图片')
+    ElNotification({
+      title: '请导入图片',
+      type: "error",
+    })
     return
   }
 
@@ -78,7 +84,10 @@ async function startTest() {
     await nextTick(() => updateChart())
   } catch (error) {
     console.error(error)
-    ElMessage.error('测试失败，请重试')
+    ElNotification({
+      title: '测试失败，请重试',
+      type: "error",
+    })
   } finally {
     isTesting.value = false
   }
@@ -90,7 +99,10 @@ const uploader = ref<UploadInstance>()
 const handleBeforeUpload = (option: UploadRequestOptions) => {
   const fileData = option.file
   if (!fileData.type.startsWith('image/')) {
-    ElMessage.error('仅支持图片格式！')
+    ElNotification({
+      title: '仅支持图片格式',
+      type: "error",
+    })
     return false
   }
   file.value = fileData

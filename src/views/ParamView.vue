@@ -16,9 +16,23 @@ const epochs = ref(50)
 const selectedDataset = ref<Dataset>()
 const dataset = ref<Dataset[]>([])
 const datasetIntro = ref('未选择数据集，可在左侧下拉框中选择。选择数据集后，此处会给出数据集的简介。')
+const started = ref<boolean>(false)
 
-const goStart = () => {
-  router.push('/train')
+const goStart = async () => {
+  started.value = true
+  await axios.post('/start_training', {
+    dataset_type: selectedDataset.value,
+    epochs: epochs.value
+  })
+    .then(() => {
+      router.push('/train')
+    })
+    .catch(() => {
+      ElNotification({
+        title: '尝试开始模型训练失败，请稍后重试',
+        type: "error",
+      })
+    })
 }
 
 const onDatasetChanged = (val: string) => {
@@ -70,8 +84,8 @@ onMounted(async () => {
           <el-input-number v-model="epochs" :max="100" :min="1" />
         </el-form-item>
         <el-button class="start-button" type="primary" size="large" round
-                   @click="goStart"
-                   :disabled="selectedDataset == undefined">开始训练</el-button>
+                   @click="goStart" :loading="started"
+                   :disabled="selectedDataset == undefined || started">开始训练</el-button>
     </el-form>
     <el-alert class="config-form-intro" title="数据集介绍" type="info" :description="datasetIntro" :closable="false" center show-icon/>
   </el-container>
