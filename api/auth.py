@@ -1,6 +1,6 @@
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask import Blueprint, request, jsonify, session
-from models import Model, db, User, TrainingRecord
+from models import Model, db, User
 from lib.train.session import open_session, check_classify_acc, get_available_models
 from multiprocessing import Manager, Process
 import uuid
@@ -8,7 +8,6 @@ import os
 from werkzeug.utils import secure_filename
 
 auth_bp = Blueprint('auth', __name__)
-
 
 # 初始化 LoginManager
 login_manager = LoginManager()
@@ -18,10 +17,8 @@ login_manager = LoginManager()
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
 # 使用 Manager 创建共享字典
 global_training_status = {}
-
 
 def allowed_file(filename):
     # 验证文件合法性的逻辑
@@ -110,23 +107,20 @@ def register_routes(app):
             db.session.add(model)
             db.session.commit()
 
-        training_record = TrainingRecord(model_id=model.id, completed=False)
-        db.session.add(training_record)
-        db.session.commit()
-
         return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
+
     @auth_bp.route('/get_training_progress', methods=['GET'])
     @login_required
     def get_training_progress():
         # 获取当前用户的训练记录
-        training_records = TrainingRecord.query.filter_by(user_id=current_user.id, completed=False).all()
-        
-        if not training_records:
+        models = Model.query.filter_by(user_id=current_user.id).all()
+        task_ids = [model.name.split('_')[-1] for model in models if model.name.startswith('model_')]
+
+        if not task_ids:
             return jsonify({'message': '当前用户无任务在进行'}), 200
 
         # 假设每个用户只有一个未完成的任务，返回第一个未完成的任务
-        training_record = training_records[0]
-        task_id = training_record.model.name.split('_')[-1]  # 假设 model.name 格式为 model_<task_id>
+        task_id = task_ids[0]
         training_status = global_training_status.get(str(task_id), {})
 
         return jsonify({
