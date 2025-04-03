@@ -1,11 +1,14 @@
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from flask import Blueprint, request, jsonify, session
-from models import Model, db, User
-from lib.train.session import open_session, check_classify_acc, get_available_models
-from multiprocessing import Manager, Process
-import uuid
+import json
 import os
+import uuid
+from multiprocessing import Manager, Process
+
+from flask import Blueprint, request, jsonify, session
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
+
+from lib.train.session import open_session, check_classify_acc, get_available_models
+from models import Model, db, User, TrainingRecord
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -17,8 +20,8 @@ login_manager = LoginManager()
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# 使用 Manager 创建共享字典
-global_training_status = {}
+training_status = {}
+user_tasks = {}
 
 def allowed_file(filename):
     # 验证文件合法性的逻辑
@@ -74,12 +77,11 @@ def register_routes(app):
         return jsonify({'message': 'Logged out successfully'}), 200
 
     @app.route('/current_session', methods=['GET'])
+    @login_required
     def current_session():
-        if not current_user.is_authenticated:
-            return jsonify({'msg': "Unauthorized!"}), 403
         return jsonify({'message': 'User is logged in', 'user_id': current_user.id, 'username': current_user.username}), 200
 
-    @auth_bp.route('/start_training', methods=['POST'])
+    @app.route('/start_training', methods=['POST'])
     @login_required
     def start_training():
         data = request.json
@@ -89,46 +91,85 @@ def register_routes(app):
             return jsonify({'message': 'Invalid input'}), 400
 
         task_id = uuid.uuid4()
+        user_tasks[current_user.id] = task_id
+
         output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
         os.makedirs(output_dir, exist_ok=True)
 
-        # 使用 Manager 创建共享字典
-        training_status = Manager().dict()
-        global_training_status[str(task_id)] = training_status
-
-        p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status))
+        p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status['dict']))
         p.start()
-
-        # 保存进程信息以便后续查询
-        if current_user.models:
-            model = current_user.models[0]
-        else:
-            model = Model(name=f"model_{task_id}", user_id=current_user.id, file_directory=output_dir)
-            db.session.add(model)
-            db.session.commit()
 
         return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
 
-    @auth_bp.route('/get_training_progress', methods=['GET'])
+    @app.route('/get_training_progress', methods=['GET'])
     @login_required
     def get_training_progress():
         # 获取当前用户的训练记录
-        models = Model.query.filter_by(user_id=current_user.id).all()
-        task_ids = [model.name.split('_')[-1] for model in models if model.name.startswith('model_')]
+        task_id = user_tasks.get(current_user.id)
+        if not task_id:
+            return jsonify({'message': 'No running task'}), 200
 
-        if not task_ids:
-            return jsonify({'message': '当前用户无任务在进行'}), 200
-
-        # 假设每个用户只有一个未完成的任务，返回第一个未完成的任务
-        task_id = task_ids[0]
-        training_status = global_training_status.get(str(task_id), {})
+        current_status = training_status['dict'].get(task_id, {
+            'status': 'INITIALIZING',
+            'data': None
+        })
 
         return jsonify({
-            'task_id': task_id,
-            'completed': training_status.get('completed', False),
-            'loss_list': training_status.get('loss_list', []),
-            'acc_list': training_status.get('acc_list', [])
+            'message': 'Task running',
+            'status': current_status.get('status', 'INITIALIZING'),
+            'data': current_status.get('data', None)
         }), 200
+
+    @app.route('/train_finish', methods=['GET'])
+    @login_required
+    def train_finish():
+        # 通知后端训练结束，存储记录
+        task_id = user_tasks.get(current_user.id)
+        if not task_id:
+            return jsonify({'message': 'No running task'}), 400
+
+        current_status = training_status['dict'].get(task_id, {
+            'status': 'INITIALIZING',
+            'data': {}
+        })
+        if current_status['status'] != 'FINISHED':
+            return jsonify({'message': 'Task still running'}), 400
+
+        output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
+        os.makedirs(output_dir, exist_ok=True)
+
+        # todo: 可以搞一个模型命名
+        model = Model(name=f"model_{task_id}", user_id=current_user.id, file_directory=output_dir)
+        db.session.add(model)
+        db.session.commit()
+
+        record = TrainingRecord(model_id=model.id,
+                                loss_list=json.dumps(current_status['data']['loss_trains']),
+                                acc_list=json.dumps(current_status['data']['acc_trains']),
+                                test_acc=current_status['data']['test_acc'],
+                                train_acc=current_status['data']['train_acc'])
+        db.session.add(record)
+        db.session.commit()
+
+        return jsonify({'message': 'Record saved'}), 200
+
+    @app.route('/get_last_record', methods=['GET'])
+    @login_required
+    def get_last_record():
+        # 获取用户的最后一次训练记录
+        record = (TrainingRecord.query
+                  .join(Model, TrainingRecord.model_id == Model.id)
+                  .filter(Model.user_id == current_user.id)
+                  .order_by(TrainingRecord.id.desc())
+                  .first())
+        if not record:
+            return jsonify({'message': 'No record yet'}), 404
+
+        return jsonify({'message': 'Record found',
+                        'loss_list': json.loads(record.loss_list),
+                        'acc_list': json.loads(record.acc_list),
+                        'test_acc': record.test_acc,
+                        'train_acc': record.train_acc}), 200
 
     @app.route('/get_models', methods=['GET'])
     @login_required
