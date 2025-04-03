@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, session, send_file, make_response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 
-from lib.train.session import open_session, check_classify_acc, get_available_models
+from lib.train.session import open_session, check_classify_acc, get_available_datasets
 from models import Model, db, User, TrainingRecord
 
 auth_bp = Blueprint('auth', __name__)
@@ -169,11 +169,11 @@ def register_routes(app):
                         'loss_list': json.loads(record.loss_list), 'acc_list': json.loads(record.acc_list),
                         'test_acc': record.test_acc, 'train_acc': record.train_acc}), 200
 
-    @app.route('/get_models', methods=['GET'])
+    @app.route('/get_datasets', methods=['GET'])
     @login_required
-    def get_models():
-        models = get_available_models()
-        return jsonify({'message': 'Models available', 'models': models}), 200
+    def get_datasets():
+        datasets = get_available_datasets()
+        return jsonify({'message': 'Datasets available', 'datasets': datasets}), 200
 
     @app.route('/download_model/<string:model_id>', methods=['GET'])
     @login_required

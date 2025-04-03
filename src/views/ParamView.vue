@@ -45,9 +45,9 @@ const onDatasetChanged = (val: string) => {
 }
 
 onMounted(async () => {
-  await axios.get('/get_models')
+  await axios.get('/get_datasets')
     .then(response => {
-      dataset.value = response.data.models.map((array: Array<string>) => {
+      dataset.value = response.data.datasets.map((array: Array<string>) => {
         return {
           id: array[0],
           name: array[1],
@@ -57,7 +57,7 @@ onMounted(async () => {
     })
     .catch(() => {
       ElNotification({
-        title: '获取可用模型失败，请稍后重试',
+        title: '获取可用数据集失败，请稍后重试',
         type: "error",
       })
     })
