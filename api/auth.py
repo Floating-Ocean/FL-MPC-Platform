@@ -1,11 +1,12 @@
 import json
 import os
+import re
 import uuid
 from multiprocessing import Manager, Process
 
+import unicodedata
 from flask import Blueprint, request, jsonify, session, send_file, make_response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from werkzeug.utils import secure_filename
 
 from lib.train.session import open_session, check_classify_acc, get_available_datasets
 from models import Model, db, User, TrainingRecord
@@ -22,10 +23,6 @@ def load_user(user_id):
 
 training_status = {}
 user_tasks = {}
-
-def allowed_file(filename):
-    # 验证文件合法性的逻辑
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
 
 def register_routes(app):
     @app.route('/register', methods=['POST'])
@@ -213,16 +210,31 @@ def register_routes(app):
     @app.route('/upload_model', methods=['POST'])
     @login_required
     def upload_model():
-        file = request.files['model']
-        # 验证模型文件合法性
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            new_model = Model(name=filename, user_id=current_user.id, file_directory=os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            db.session.add(new_model)
-            db.session.commit()
-            return jsonify({'message': 'Model uploaded successfully'}), 200
-        return jsonify({'message': 'Invalid file'}), 400
+        if 'file' not in request.files:
+            return jsonify({'message': 'No file uploaded'}), 400
+
+        uploaded_file = request.files['file']
+        if uploaded_file.filename == '':
+            return jsonify({'message': 'Invalid payload'}), 400
+
+        filename = secure_filename(uploaded_file.filename)
+        print(uploaded_file.filename, filename)
+        if '.' in filename and filename.rsplit('.', 1)[1].lower() != 'pth':
+            return jsonify({'message': 'Invalid file suffix'}), 400
+
+        task_id = uuid.uuid4()
+        output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
+        os.makedirs(output_dir, exist_ok=True)
+
+        model_path = os.path.join(output_dir, f"{task_id}.pth")
+        uploaded_file.save(model_path)
+
+        model = Model(name=filename.removesuffix('.pth'), user_id=current_user.id, file_directory=output_dir,
+                      is_user_uploaded=True)
+        db.session.add(model)
+        db.session.commit()
+
+        return jsonify({'message': 'Model uploaded successfully'}), 200
 
     @app.route('/test_accuracy', methods=['POST'])
     @login_required
@@ -262,3 +274,34 @@ def register_routes(app):
             return jsonify({'message': 'Prediction ok', 'result': acc_dict['result']}), 200
         else:
             return jsonify({'message': 'Prediction failed'}), 500
+
+
+def secure_filename(filename: str) -> str:
+    """Adapted from werkzeug/utils.py."""
+    _filename_ascii_add_strip_re = re.compile(r'[^A-Za-z0-9_\u4E00-\u9FBF\u3040-\u30FF\u31F0-\u31FF.-]')
+    _windows_device_files = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{i}" for i in range(10)),
+        *(f"LPT{i}" for i in range(10)),
+    }
+    filename = unicodedata.normalize("NFKD", filename)
+    filename = filename.encode("utf-8", "ignore").decode("utf-8")
+
+    for sep in os.sep, os.path.altsep:
+        if sep:
+            filename = filename.replace(sep, " ")
+    filename = str(_filename_ascii_add_strip_re.sub("", "_".join(filename.split()))).strip(
+        "._"
+    )
+
+    if (
+            os.name == "nt"
+            and filename
+            and filename.split(".")[0].upper() in _windows_device_files
+    ):
+        filename = f"_{filename}"
+
+    return filename
