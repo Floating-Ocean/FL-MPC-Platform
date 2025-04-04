@@ -96,7 +96,8 @@ def register_routes(app):
         output_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(task_id))
         os.makedirs(output_dir, exist_ok=True)
 
-        p = Process(target=open_session, args=(task_id, epochs, dataset_type, output_dir, training_status['dict']))
+        p = Process(target=open_session, args=(task_id, epochs, dataset_type, app.config['DATASET_FOLDER'],
+                                               output_dir, training_status['dict']))
         p.start()
 
         return jsonify({'message': 'Training started', 'task_id': str(task_id)}), 200
@@ -253,7 +254,7 @@ def register_routes(app):
 
         model_path = os.path.join(model.file_directory, f"{model.file_directory.split(os.path.sep)[-1]}.pth")
         acc_dict = Manager().dict()
-        p = Process(target=check_classify_acc, args=(model_path, temp_path, acc_dict))
+        p = Process(target=check_classify_acc, args=(model_path, temp_path, app.config['DATASET_FOLDER'], acc_dict))
         p.start()
         p.join()
 
