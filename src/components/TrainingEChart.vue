@@ -149,8 +149,8 @@ watch([accData, lossData], () => {
     chart.setOption({
       xAxis: { data: epochs.value },
       series: [
-        { data: accData.value },
-        { data: lossData.value }
+        { data: accData.value.map((v: number) => Math.ceil(v * 100000) / 1000) },
+        { data: lossData.value.map((v: number) => Math.ceil(v * 10000) / 10000) }
       ]
     })
   }

@@ -9,7 +9,8 @@ const router = useRouter()
 
 const subProgressColor = ref('#e6a23c')
 const trainingStatus = ref('正在获取训练进度')
-const loading = ref(true)
+const initLoading = ref(true)
+const evalLoading = ref(true)
 
 const chartRef = ref()
 const roundPercentage = ref(0)
@@ -25,25 +26,29 @@ const startPooling = async () => {
         switch (currentStatus) {
           case 'INITIALIZING':
             trainingStatus.value = '正在初始化模型训练'
-            if (!loading.value) loading.value = true
+            if (!initLoading.value) initLoading.value = true
+            if (evalLoading.value) evalLoading.value = false
             break
           case 'TRAINING':
             trainingStatus.value = `正在进行第${currentData['epoch']}轮训练`
-            if (loading.value) loading.value = false
-            const currentRoundPercentage = currentData['epoch'] * 100.0 / currentData['total_epoch']
+            if (initLoading.value) initLoading.value = false
+            if (evalLoading.value) evalLoading.value = false
             const currentEpochPercentage = currentData['epoch_progress']
+            const currentRoundPercentage = (currentData['epoch'] - 1) * 100.0 / currentData['total_epoch']
+                                           + currentData['epoch_progress'] / currentData['total_epoch']
             if (currentRoundPercentage != roundPercentage.value) roundPercentage.value = currentRoundPercentage
             if (currentEpochPercentage != epochPercentage.value) epochPercentage.value = currentEpochPercentage
             if (chartRef.value.accData.length < currentData['acc_trains'].length) {
-              chartRef.value.accData.push(currentData['acc_trains'][currentData['acc_trains'].length - 1])
+                chartRef.value.accData = currentData['acc_trains']
             }
             if (chartRef.value.lossData.length < currentData['loss_trains'].length) {
-              chartRef.value.lossData.push(currentData['loss_trains'][currentData['loss_trains'].length - 1])
+                chartRef.value.lossData = currentData['loss_trains']
             }
             break
           case 'EVALUATING':
             trainingStatus.value = '正在评估模型'
-            loading.value = true
+            if (initLoading.value) initLoading.value = false
+            if (!evalLoading.value) evalLoading.value = true
             break
           case 'FINISHED':
             await axios.get('/train_finish')
@@ -135,12 +140,13 @@ onUnmounted(() => {
   <el-container class="page-container">
     <el-text class="chart-title">{{ trainingStatus }}</el-text>
 
-    <el-progress v-if="loading" :show-text="false" :stroke-width="24" :indeterminate="true" :percentage="80" class="train-progress" />
+    <el-progress v-if="initLoading" :show-text="false" :stroke-width="24" :indeterminate="true" :percentage="80" class="train-progress" />
 
     <el-container v-else class="training-container">
-      <el-progress :text-inside="true" :stroke-width="24" :indeterminate="loading" :percentage="roundPercentage"
+      <el-progress :text-inside="true" :stroke-width="24" :percentage="roundPercentage"
                    :format="(percentage: number) => `${percentage.toFixed(2)}%`" class="train-progress" />
-      <el-progress :text-inside="true" :stroke-width="24" :indeterminate="loading" :percentage="epochPercentage" :color="subProgressColor"
+      <el-progress :text-inside="true" :stroke-width="24" :indeterminate="evalLoading" :show-text="!evalLoading"
+                   :percentage="evalLoading ? 100 : epochPercentage" :color="subProgressColor"
                    :format="(percentage: number) => `${percentage.toFixed(2)}%`" class="train-progress" />
 
       <el-alert type="info" show-icon class="train-alert">
@@ -184,5 +190,13 @@ onUnmounted(() => {
   font-size: 24px;
   color: var(--el-text-color-primary);
   letter-spacing: 0.05em;
+}
+</style>
+
+<style>
+.train-progress {
+  .el-progress-bar__inner{
+    min-width: 48px;
+  }
 }
 </style>
