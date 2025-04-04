@@ -102,7 +102,18 @@ onMounted(async () => {
         return
       }
       if (response.data.status == 'FINISHED'){
-        await router.push('/train/finish')
+        await axios.get('/train_finish')
+          .then(async () => {
+            await checkRecord()
+          })
+          .catch(() => {
+            ElNotification({
+              title: '训练异常结束，请稍后重试',
+              type: "error",
+            })
+            stopPolling()
+          })
+        return
       }
       await startPooling()
     })

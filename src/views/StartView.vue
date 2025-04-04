@@ -1,13 +1,17 @@
 <script lang="ts" setup>
+import { onMounted, ref } from 'vue'
 import { Guide, Coin, Upload } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import { ElButton } from 'element-plus'
+import {
+  ElButton,
+  ElNotification,
+  type UploadInstance,
+  type UploadRequestOptions
+} from 'element-plus'
 
 const router = useRouter()
-
-const training = false
-
+const training = ref<boolean>(false)
 
 const goTrain = () => {
   router.push('/start/param')
@@ -16,6 +20,69 @@ const goTrain = () => {
 const goStatus = () => {
   router.push('/train')
 }
+
+const file = ref<File | null>(null)
+const uploader = ref<UploadInstance>()
+
+const handleFile = (rawFile: File) => {
+  if (!rawFile.name.endsWith('.pth')) {
+    ElNotification({
+      title: '文件类型错误',
+      message: '仅支持 PTH 格式',
+      type: 'error',
+    })
+  } else {
+    file.value = rawFile
+    startUpload()
+  }
+}
+
+const handleBeforeUpload = (option: UploadRequestOptions) => {
+  const rawFile = option.file
+  handleFile(rawFile)
+  return false // 阻止 Element Plus 组件自动上传
+}
+
+const startUpload = async () => {
+  if (!file.value) {
+    ElNotification({
+      title: '请导入模型',
+      type: "error",
+    })
+    return
+  }
+
+  const formData = new FormData();
+  formData.append('file', file.value);
+
+  await axios.post('/upload_model', formData)
+    .then(() => {
+      router.push('/test')
+      ElNotification({
+        title: '导入成功，可进行模型测试',
+        type: "success",
+      })
+    })
+    .catch(() => {
+      ElNotification({
+        title: '文件损坏，请稍后重试',
+        type: "error",
+      })
+    })
+}
+
+onMounted(async () => {
+  await axios.get('/get_training_progress')
+    .then(response => {
+      training.value = (response.data.message != 'No running task')
+    })
+    .catch(() => {
+      ElNotification({
+        title: '获取训练进度失败',
+        type: "error",
+      })
+    })
+})
 
 </script>
 
@@ -42,6 +109,7 @@ const goStatus = () => {
         <el-upload
           ref="uploader"
           :http-request="handleBeforeUpload"
+          :show-file-list="false"
           accept=".pth">
           <el-button class="page-button" round>
             <div class="page-button-content">
