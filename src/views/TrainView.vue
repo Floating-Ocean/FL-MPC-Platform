@@ -80,6 +80,13 @@ const startPooling = async () => {
                 stopPolling()
               })
             break
+          case 'FAILED':
+            console.error(currentData)
+            ElNotification({
+              title: '出现错误，请重试',
+              type: "error",
+            })
+            stopPolling()
         }
       })
       .catch(() => {
