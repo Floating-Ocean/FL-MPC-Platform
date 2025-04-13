@@ -31,8 +31,6 @@ const initChart = () => {
         type: 'slider',
         show: false,
         realtime: true,
-        startValue: 0,
-        endValue: 6,
       },
     ],
     grid: {
