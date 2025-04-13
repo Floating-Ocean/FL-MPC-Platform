@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import {RouterView, useRouter} from 'vue-router'
 import {ElNotification, ElPageHeader} from 'element-plus'
 import {User} from '@element-plus/icons-vue'
@@ -6,6 +7,7 @@ import axios from "axios";
 import {isLoggedIn, userName} from "@/router";
 
 const router = useRouter()
+const dialogVisible = ref<boolean>(false);
 
 const onBack = () => {
   window.history.back()
@@ -26,8 +28,26 @@ const logout = async () => {
       })
 }
 
+const handleCommand = (command: string | number | object) => {
+  if (command === 'logout') {
+    dialogVisible.value = true
+  }else if(command == 'status'){
+    toStatus()
+  }else if(command == 'test'){
+    toTest()
+  }
+}
+
 const toHome = () => {
   router.push('/')
+}
+
+const toStatus = () => {
+  router.push('/train')
+}
+
+const toTest = () => {
+  router.push('/test')
 }
 
 </script>
@@ -42,16 +62,35 @@ const toHome = () => {
         </span>
       </template>
       <template #extra>
-        <el-popconfirm title="退出登录?" @confirm="logout">
-        <template #reference>
+        <el-dropdown trigger="click" @command="handleCommand">
           <el-button v-if="isLoggedIn" class="app-user" text>
             <el-icon class="app-user-icon"><User/></el-icon>
             <span class="app-user-name">{{ userName }}</span>
           </el-button>
-        </template>
-      </el-popconfirm>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="status">查看训练进度　　　　　</el-dropdown-item>
+              <el-dropdown-item command="test">测试模型</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
     </el-page-header>
+    <el-dialog
+      v-model="dialogVisible"
+      title="退出登录"
+      width="500">
+      <span>真的要退出登录吗？</span>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="dialogVisible = false; logout()">
+            确定
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
     <RouterView/>
   </div>
 </template>
