@@ -49,6 +49,23 @@ const startPooling = async () => {
             trainingStatus.value = '正在评估模型'
             if (initLoading.value) initLoading.value = false
             if (!evalLoading.value) evalLoading.value = true
+            if (chartRef.value.accData.length < currentData['acc_trains'].length) {
+              chartRef.value.accData = currentData['acc_trains']
+            }
+            if (chartRef.value.lossData.length < currentData['loss_trains'].length) {
+              chartRef.value.lossData = currentData['loss_trains']
+            }
+            break
+          case 'TEST_EVALUATING':
+            trainingStatus.value = '正在测试集上评估模型'
+            if (initLoading.value) initLoading.value = false
+            if (!evalLoading.value) evalLoading.value = true
+            if (chartRef.value.accData.length < currentData['acc_trains'].length) {
+              chartRef.value.accData = currentData['acc_trains']
+            }
+            if (chartRef.value.lossData.length < currentData['loss_trains'].length) {
+              chartRef.value.lossData = currentData['loss_trains']
+            }
             break
           case 'FINISHED':
             await axios.get('/train_finish')
